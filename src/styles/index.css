@@ -288,6 +288,11 @@ p {
     background: #b91c1c;
 }
 
+.task-actions {
+    display: flex;
+    justify-content: end;
+}
+
 .app-footer {
     border-top: 1px solid #d7dce5;
     padding: 1.5rem 1rem;

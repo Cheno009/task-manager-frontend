@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppHeader } from "./components/AppHeader";
+import { TaskActions } from "./components/TaskActions";
 import { TaskFilters } from "./components/TaskFilters";
 import { TaskForm } from "./components/TaskForm";
 import { TaskList } from "./components/TaskList";
@@ -74,7 +75,17 @@ export default function App() {
   
     setTasks((currentTasks) => currentTasks.filter((task) => task.id !== id));
   }
-  
+
+  const completedCount = tasks.filter(
+    (task) => task.status === "completed",
+  ).length;
+
+  function handleClearCompleted() {
+    setTasks((currentTasks) =>
+      currentTasks.filter((task) => task.status !== "completed"),
+    );
+  }
+
   return (
     <div className="app-shell">
       <AppHeader />
@@ -82,6 +93,10 @@ export default function App() {
         <TaskForm onAddTask={handleAddTask} />
         <TaskFilters />
         <TaskSummary tasks={tasks} />
+        <TaskActions
+          completedCount={completedCount}
+          onClearCompleted={handleClearCompleted}
+        />
         <TaskList
           tasks={tasks}
           onToggleStatus={handleToggleStatus}
