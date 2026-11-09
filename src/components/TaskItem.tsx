@@ -1,24 +1,18 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router";
 import type { Task } from "../models/task.interface";
 import {
   TASK_TITLE_MAX_LENGTH,
   validateTaskTitle,
 } from "../utils/task-validation";
-
+import { formatTaskDate } from "../utils/date";
 interface TaskItemProps {
   task: Task;
   onToggleStatus: (id: string) => void;
   onEditTask: (id: string, title: string) => void;
-  onDeleteTask: (id: string) => void;
+  onDeleteTask: (id: string) => boolean;
 }
-
-function formatTaskDate(value: string): string {
-  return new Intl.DateTimeFormat("es-MX", {
-    dateStyle: "medium",
-  }).format(new Date(value));
-}
-
 export function TaskItem({
   task,
   onToggleStatus,
@@ -29,44 +23,34 @@ export function TaskItem({
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
   const [error, setError] = useState("");
-
   const statusLabel = status === "completed" ? "Completada" : "Pendiente";
-
   function handleStartEdit(): void {
     setDraftTitle(title);
     setError("");
     setIsEditing(true);
   }
-
   function handleCancelEdit(): void {
     setDraftTitle(title);
     setError("");
     setIsEditing(false);
   }
-
   function handleDraftChange(value: string): void {
     setDraftTitle(value);
-
     if (error) {
       setError(validateTaskTitle(value) ?? "");
     }
   }
-
   function handleEditSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-
     const validationMessage = validateTaskTitle(draftTitle);
-
     if (validationMessage) {
       setError(validationMessage);
       return;
     }
-
     onEditTask(id, draftTitle.trim());
     setError("");
     setIsEditing(false);
   }
-
   return (
     <article className={`task-item task-item--${status}`} role="listitem">
       <div className="task-item__content">
@@ -119,6 +103,14 @@ export function TaskItem({
         role="group"
         aria-label={`Acciones para ${title}`}
       >
+        {!isEditing && (
+          <Link
+            className="button-link button-link--secondary"
+            to={`/tasks/${id}`}
+          >
+            Ver detalle
+          </Link>
+        )}
         <button
           type="button"
           onClick={() => onToggleStatus(id)}
@@ -132,7 +124,9 @@ export function TaskItem({
         <button
           type="button"
           className="button-danger"
-          onClick={() => onDeleteTask(id)}
+          onClick={() => {
+            onDeleteTask(id);
+          }}
           disabled={isEditing}
         >
           Eliminar
