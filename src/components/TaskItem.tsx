@@ -7,14 +7,18 @@ import {
   TASK_TITLE_MAX_LENGTH,
   validateTaskTitle,
 } from "../utils/task-validation";
+
 interface TaskItemProps {
   task: Task;
+  canDelete: boolean;
   onToggleStatus: (task: Task) => Promise<boolean>;
   onEditTask: (task: Task, title: string) => Promise<boolean>;
   onDeleteTask: (task: Task) => Promise<boolean>;
 }
+
 export function TaskItem({
   task,
+  canDelete,
   onToggleStatus,
   onEditTask,
   onDeleteTask,
@@ -23,26 +27,32 @@ export function TaskItem({
   const [draftTitle, setDraftTitle] = useState(task.title);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+
   const statusLabel = task.status === "completed" ? "Completada" : "Pendiente";
+  
   function startEditing(): void {
     setDraftTitle(task.title);
     setError("");
     setIsEditing(true);
   }
+  
   function cancelEditing(): void {
     setDraftTitle(task.title);
     setError("");
     setIsEditing(false);
   }
+  
   async function handleEditSubmit(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
     const validationMessage = validateTaskTitle(draftTitle);
+  
     if (validationMessage) {
       setError(validationMessage);
       return;
     }
+  
     setIsBusy(true);
     const wasUpdated = await onEditTask(task, draftTitle.trim());
     setIsBusy(false);
@@ -51,11 +61,13 @@ export function TaskItem({
       setError("");
     }
   }
+  
   async function handleToggle(): Promise<void> {
     setIsBusy(true);
     await onToggleStatus(task);
     setIsBusy(false);
   }
+  
   async function handleDelete(): Promise<void> {
     setIsBusy(true);
     await onDeleteTask(task);
@@ -139,14 +151,16 @@ export function TaskItem({
         >
           Editar
         </button>
-        <button
-          type="button"
-          className="button-danger"
-          disabled={isBusy || isEditing}
-          onClick={() => void handleDelete()}
-        >
-          Eliminar
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            className="button-danger"
+            disabled={isBusy || isEditing}
+            onClick={() => void handleDelete()}
+          >
+            Eliminar
+          </button>
+        )}
       </div>
     </article>
   );

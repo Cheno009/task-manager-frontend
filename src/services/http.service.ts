@@ -9,6 +9,10 @@ interface HttpErrorOptions {
   details?: unknown;
 }
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | undefined;
+
 export class HttpError extends Error {
   readonly status: number;
   readonly code: string;
@@ -23,6 +27,17 @@ export class HttpError extends Error {
     this.requestId = options.requestId;
     this.details = options.details;
   }
+}
+
+export function setUnauthorizedHandler(
+  handler: UnauthorizedHandler,
+): () => void {
+  unauthorizedHandler = handler;
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = undefined;
+    }
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -64,6 +79,7 @@ async function readPayload(response: Response): Promise<unknown> {
 export async function httpRequest<T>(
   path: string,
   options: RequestInit = {},
+  accessToken?: string,
 ): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
@@ -72,20 +88,28 @@ export async function httpRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
   try {
     const response = await fetch(`${API_URL}${path}`, {
       ...options,
       headers,
     });
-
+    
     if (response.status === 204) {
       return undefined as T;
     }
-
+    
     const payload = await readPayload(response);
-
+    
     if (!response.ok) {
-        if (isApiErrorBody(payload)) {
+      if (response.status === 401 && accessToken) {
+        unauthorizedHandler?.();
+      }
+    
+      if (isApiErrorBody(payload)) {
         throw new HttpError({
           status: response.status,
           code: payload.error.code,
@@ -94,20 +118,20 @@ export async function httpRequest<T>(
           details: payload.error.details,
         });
       }
-
+    
       throw new HttpError({
         status: response.status,
         code: "HTTP_ERROR",
         message: "La API respondió con un error.",
       });
     }
-
+    
     return payload as T;
   } catch (error) {
     if (error instanceof HttpError || isAbortError(error)) {
       throw error;
     }
-
+    
     throw new HttpError({
       status: 0,
       code: "NETWORK_ERROR",
@@ -130,6 +154,5 @@ export function getHttpErrorMessage(error: unknown): string {
   }
 
   const reference = error.requestId ? ` Referencia: ${error.requestId}.` : "";
-
   return `${error.message}${reference}`;
 }
