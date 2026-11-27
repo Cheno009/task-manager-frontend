@@ -37,22 +37,17 @@ const [reloadKey, setReloadKey] = useState(0);
 const [isDeleting, setIsDeleting] =
 useState(false);
 const canDelete = user?.role === 'admin';
+// Identifica la petición actual; si cambia el taskId o se
+// pulsa "Reintentar", la vista vuelve a "cargando" sin setState.
+const requestKey = `${taskId}:${reloadKey}`;
+const [loadedKey, setLoadedKey] =
+useState<string | null>(null);
+const isLoading = loadedKey !== requestKey;
 useEffect(() => {
-if (!taskId) {
-setStatus('not-found');
-return;
-}
-if (!accessToken) {
-setStatus('error');
-setErrorMessage(
-'La sesión no está disponible.',
-);
-return;
-}
+if (!taskId || !accessToken) return;
+const key = `${taskId}:${reloadKey}`;
 const controller = new AbortController();
 async function loadTask(): Promise<void> {
-setStatus('loading');
-setErrorMessage('');
 try {
 const response = await getTaskById(
 taskId as string,
@@ -61,14 +56,17 @@ controller.signal,
 );
 setTask(response.data);
 setStatus('success');
+setErrorMessage('');
+setLoadedKey(key);
 } catch (error) {
 if (isAbortError(error)) return;
 if (isHttpError(error) && error.status === 404) {
 setStatus('not-found');
-return;
-}
+} else {
 setStatus('error');
 setErrorMessage(getHttpErrorMessage(error));
+}
+setLoadedKey(key);
 }
 }
 void loadTask();
@@ -92,7 +90,23 @@ setErrorMessage(getHttpErrorMessage(error));
 setIsDeleting(false);
 }
 }
-if (status === 'loading') {
+if (!taskId) {
+return (
+<NotFoundPage
+title="Tarea no encontrada"
+message="La tarea no existe o fue eliminada."
+/>
+);
+}
+if (!accessToken) {
+return (
+<section className="panel" role="alert">
+<h2>No fue posible consultar la tarea</h2>
+<p>La sesión no está disponible.</p>
+</section>
+);
+}
+if (isLoading || status === 'loading') {
 return <p role="status">Consultando tarea...</p>;
 }
 if (status === 'not-found') {
